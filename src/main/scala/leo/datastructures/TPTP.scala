@@ -1076,7 +1076,7 @@ object TPTP {
       override def symbols: Set[String] = formula.symbols
     }
     final case class Sequent(lhs: Seq[Formula], rhs: Seq[Formula]) extends Statement {
-      override def pretty: String = s"${lhs.map(_.pretty).mkString("{", ",", "}")} --> ${rhs.map(_.pretty).mkString("[", ",", "]")}"
+      override def pretty: String = s"${lhs.map(_.pretty).mkString("[", ",", "]")} --> ${rhs.map(_.pretty).mkString("[", ",", "]")}"
       override def symbols: Set[String] = lhs.flatMap(_.symbols).toSet union rhs.flatMap(_.symbols).toSet
     }
 
