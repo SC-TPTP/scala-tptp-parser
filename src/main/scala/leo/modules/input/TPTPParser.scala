@@ -55,10 +55,11 @@ import scala.io.Source
  */
 object TPTPParser {
   import datastructures.TPTP.{Problem, AnnotatedFormula, THFAnnotated, TFFAnnotated,
-    FOFAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
+    FOFAnnotated, FOTAnnotated, CNFAnnotated, TPIAnnotated, TCFAnnotated}
   import datastructures.TPTP.THF.{Formula => THFFormula}
   import datastructures.TPTP.TFF.{Formula => TFFFormula}
   import datastructures.TPTP.FOF.{Formula => FOFFormula}
+  import datastructures.TPTP.FOF.{Term => FOFTerm}
   import datastructures.TPTP.CNF.{Formula => CNFFormula}
   import datastructures.TPTP.TCF.{Formula => TCFFormula}
 
@@ -149,6 +150,19 @@ object TPTPParser {
     result
   }
   /**
+    * Parses an TPTP FOF annotated formula given as String.
+    *
+    * @param annotatedFormula The annotated formula as string.
+    * @return The parsing result as [[FOFAnnotated]] object
+    * @throws TPTPParseException If an parsing error occurred.
+    */
+  final def annotatedFOT(annotatedTerm: String): FOTAnnotated = {
+    val parser = parserFromString(annotatedTerm)
+    val result = parser.annotatedFOT()
+    parser.EOF()
+    result
+  }
+  /**
     * Parses an TPTP CNF annotated formula given as String.
     *
     * @param annotatedFormula The annotated formula as string.
@@ -225,6 +239,19 @@ object TPTPParser {
   final def fof(formula: String): FOFFormula = {
     val parser = parserFromString(formula)
     val result = parser.fofLogicFormula()
+    parser.EOF()
+    result
+  }
+  /**
+    * Parses a plain FOF formula (i.e., without annotations) given as String.
+    *
+    * @param formula The annotated formula as string.
+    * @return The parsing resultas [[FOFFormula]] object
+    * @throws TPTPParseException If an parsing error occurred.
+    */
+  final def fot(term: String): FOFTerm = {
+    val parser = parserFromString(term)
+    val result = parser.fofTerm()
     parser.EOF()
     result
   }
@@ -777,12 +804,12 @@ object TPTPParser {
                   val (file, idents) = include()
                   includes = includes :+ (file, (idents, current_comments))
                   current_comments = Vector.empty
-                case "thf" | "tff" | "fof" | "tcf" | "cnf" | "tpi" =>
+                case "thf" | "tff" | "fof" | "fot" | "tcf" | "cnf" | "tpi" =>
                   val formula = annotatedFormula()
                   formulaComments.addOne((formula.name, current_comments))
                   formulas = formulas :+ formula
                   current_comments = Vector.empty
-                case _ => error1(Seq("thf", "tff", "fof", "tcf", "cnf", "tpi", "include"), t)
+                case _ => error1(Seq("thf", "tff", "fof", "fot", "tcf", "cnf", "tpi", "include"), t)
               }
             case COMMENT_BLOCK | COMMENT_LINE | DEFINED_COMMENT_BLOCK | DEFINED_COMMENT_LINE | SYSTEM_COMMENT_BLOCK | SYSTEM_COMMENT_LINE =>
               current_comments = current_comments :+ comment()
@@ -833,12 +860,13 @@ object TPTPParser {
             case "thf" => annotatedTHF()
             case "tff" => annotatedTFF(tfx = true)
             case "fof" => annotatedFOF()
+            case "fot" => annotatedFOT()
             case "cnf" => annotatedCNF()
             case "tcf" => annotatedTCF()
             case "tpi" => annotatedTPI()
-            case _ => error1(Seq("thf", "tff", "fof", "cnf", "tcf", "tpi"), t)
+            case _ => error1(Seq("thf", "tff", "fof", "fot", "cnf", "tcf", "tpi"), t)
           }
-        case _ => error1(Seq("thf", "tff", "fof", "cnf", "tcf", "tpi"), t)
+        case _ => error1(Seq("thf", "tff", "fof", "fot", "cnf", "tcf", "tpi"), t)
       }
     }
 
@@ -2369,6 +2397,37 @@ object TPTPParser {
       else FOFAnnotated(n, r, f, Some((source, Option(info))), Some(origin))
     }
 
+    /**
+     * Parse an annotated FOT term.
+     *
+     * @return Representation of the annotated term as [[FOTAnnotated]]
+     * @throws TPTPParseException if the underlying input does not represent a valid annotated FOT term
+     */
+    def annotatedFOT(): FOTAnnotated = {
+      m(a(LOWERWORD), "fot")
+      val origin = (lastTok._3, lastTok._4)
+      a(LPAREN)
+      val n = name()
+      a(COMMA)
+      val r = role()
+      a(COMMA)
+      val t = fofTerm()
+      var source: GeneralTerm = null
+      var info: Seq[GeneralTerm] = null
+      val an0 = o(COMMA, null)
+      if (an0 != null) {
+        source = generalTerm()
+        val an1 = o(COMMA, null)
+        if (an1 != null) {
+          info = generalList()
+        }
+      }
+      a(RPAREN)
+      a(DOT)
+      if (source == null) FOTAnnotated(n, r, t, None, Some(origin))
+      else FOTAnnotated(n, r, t, Some((source, Option(info))), Some(origin))
+    }
+
     // Currently, no other kind of statement supported
     private[this] def fofFormula(): FOF.Statement = {
       val idx = peekUnder(LPAREN)
@@ -2489,7 +2548,8 @@ object TPTPParser {
     @inline private[this] def fofTermToFormula(term: FOF.Term, tokenReference: Token): FOF.Formula = {
       term match {
         case FOF.AtomicTerm(f, args) => FOF.AtomicFormula(f, args)
-        case _ => error2("Parse error: Unexpected term at formula level", tokenReference)
+        case FOF.Variable(name) => FOF.AtomicFormula(name, Seq.empty)
+        case _ => error2("Parse error: Unexpected term at formula level " + term, tokenReference)
       }
     }
 
@@ -2500,9 +2560,7 @@ object TPTPParser {
           FOF.NumberTerm(number())
         case DOUBLEQUOTED =>
           FOF.DistinctObject(consume()._2)
-        case UPPERWORD =>
-          FOF.Variable(consume()._2)
-        case LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD =>
+        case UPPERWORD | LOWERWORD | DOLLARWORD | DOLLARDOLLARWORD =>
           val fn = consume()._2
           var args: Seq[FOF.Term] = Vector()
           if (o(LPAREN, null) != null) {
@@ -2512,7 +2570,7 @@ object TPTPParser {
             }
             a(RPAREN)
           }
-          FOF.AtomicTerm(fn, args)
+          if (args.size == 0) FOF.Variable(fn) else FOF.AtomicTerm(fn, args)
         case SINGLEQUOTED => // same as before, only add single quotes if necessary
           val fn = consume()._2
           var args: Seq[FOF.Term] = Vector()

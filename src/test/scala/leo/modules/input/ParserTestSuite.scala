@@ -48,6 +48,8 @@ class ParserTestSuite extends AnyFunSuite {
     "Test.gothm0.p" -> "Test problem (Goéland) 0",
     "Test.gothm1.p" -> "Test problem (Goéland) 1",
     "Test.gothm2.p" -> "Test problem (Goéland) 2",
+    "test_schematics.p" -> "Test for schematic symbols",
+    "test_let.p" -> "Test for let expressions",
   )
 
   for (p <- problems) {
@@ -81,6 +83,7 @@ class ParserTestSuite extends AnyFunSuite {
       print(s"Parsing ${p._1} ...")
       try {
         val (t, res) = time(TPTPParser.problem(io.Source.fromFile(s"$sctptp_source/${p._1}")))
+        println(res)
         println(s"done (${t/1000}ms).")
         println(s"Parsed ${res.formulas.size} formulae and ${res.includes.size} include statements.")
         println(s"Parsing-reparsing comparison successful for '${p._1}'.")

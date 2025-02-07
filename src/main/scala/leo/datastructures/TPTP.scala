@@ -11,6 +11,7 @@ package datastructures
  *     - Annotated THF formulas by [[leo.datastructures.TPTP.THFAnnotated]],
  *     - Annotated TFF formulas by [[leo.datastructures.TPTP.TFFAnnotated]],
  *     - Annotated FOF formulas by [[leo.datastructures.TPTP.FOFAnnotated]],
+ *     - Annotated FOT terms by [[leo.datastructures.TPTP.FOTAnnotated]],
  *     - Annotated TCF formulas by [[leo.datastructures.TPTP.TCFAnnotated]],
  *     - Annotated CNF formulas by [[leo.datastructures.TPTP.CNFAnnotated]], and
  *     - Annotated TPI formulas by [[leo.datastructures.TPTP.TPIAnnotated]]
@@ -228,7 +229,7 @@ object TPTP {
      */
     final object FormulaType extends Enumeration {
       type FormulaType = Value
-      final val THF, TFF, FOF, CNF, TCF, TPI = Value
+      final val THF, TFF, FOF, FOT, CNF, TCF, TPI = Value
     }
   }
   /** An annotated THF formula. */
@@ -268,6 +269,20 @@ object TPTP {
     override def formulaType: AnnotatedFormula.FormulaType.FormulaType = AnnotatedFormula.FormulaType.FOF
     override def pretty: String = prettifyAnnotated("fof", name, role, formula.pretty, annotations)
     override def symbols: Set[String] = formula.symbols
+  }
+
+  /** An annotated FOT term. */
+  final case class FOTAnnotated(override val name: String,
+                                override val role: String,
+                                override val formula: FOF.Term,
+                                override val annotations: Annotations,
+                                override val origin: Option[(Int, Int)] = None) extends AnnotatedFormula {
+    type F = FOF.Term
+    val term = formula
+
+    override def formulaType: AnnotatedFormula.FormulaType.FormulaType = AnnotatedFormula.FormulaType.FOT
+    override def pretty: String = prettifyAnnotated("fot", name, role, term.pretty, annotations)
+    override def symbols: Set[String] = term.symbols
   }
 
   /** An annotated TCF formula. */
@@ -1203,6 +1218,65 @@ object TPTP {
     /** epsilon binder (introduced in TPTP language v9.0.0.1) */
     final case object Epsilon extends Quantifier { override def pretty: String = "#" } // epsilon
   }
+
+
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+  // FOT AST
+  ////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////
+/*
+  object FOT {
+
+    sealed abstract class Term {
+      /** Returns a set of symbols (except variables) occurring in the term. */
+      def symbols: Set[String]
+      /** Returns a TPTP-compliant serialization of the term. */
+      def pretty: String
+    }
+    /** `f` may be a dollar word, a dollar dollar word (plain string starting with $ or $$),
+     * a lower word (plain string with certain restrictions) or a single quoted TPTP atomic word. In the latter case,
+     * non-lower word atomic words are enclosed in single quotes, e.g. '...'.
+     * Any string that is neither a dollar/dollardollar word, a lower word, or a single quoted, is an invalid
+     * value for `f`. Use {{{TPTP.isLowerWord}}} to check if the string a valid (non-quoted) value for `f`, or
+     * transform via {{{TPTP.convertStringToAtomicWord}}} if necessary before.
+     *
+     * @see [[TPTP.convertStringToAtomicWord]] */
+    final case class AtomicTerm(f: String, args: Seq[Term]) extends Term  {
+      override def pretty: String = {
+        val prettyF = prettyFunctorString(f)
+        if (args.isEmpty) prettyF else s"$prettyF(${args.map(_.pretty).mkString(",")})"
+      }
+
+      override def symbols: Set[String] = args.flatMap(_.symbols).toSet + f
+
+      @inline def isUninterpretedFunction: Boolean = !isDefinedFunction && !isSystemFunction
+      @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
+      @inline def isSystemFunction: Boolean = f.startsWith("$$")
+      @inline def isConstant: Boolean = args.isEmpty
+      @inline def isSchematic: Boolean = f(0).isUpper && f(0) <= 'Z'
+    }
+    /** A TPTP variable. Precondition for creating a Variable object: `name` is uppercase. */
+    final case class Variable(name: String) extends Term {
+      override def pretty: String = name
+      override def symbols: Set[String] = Set.empty
+    }
+    final case class DistinctObject(name: String) extends Term {
+      override def pretty: String = {
+        assert(name.startsWith("\"") && name.endsWith("\""), "Distinct object without enclosing double quotes.")
+        s""""${escapeDistinctObject(name.tail.init)}""""
+      }
+      override def symbols: Set[String] = Set(name)
+    }
+    final case class NumberTerm(value: Number) extends Term {
+      override def pretty: String = value.pretty
+      override def symbols: Set[String] = Set.empty
+    }
+
+    /** epsilon binder (introduced in TPTP language v9.0.0.1) */
+    final case object Epsilon extends Quantifier { override def pretty: String = "#" } // epsilon
+  }
+  */
 
   ////////////////////////////////////////////////////////////////////////
   ////////////////////////////////////////////////////////////////////////
