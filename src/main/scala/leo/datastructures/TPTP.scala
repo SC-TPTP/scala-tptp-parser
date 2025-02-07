@@ -1087,9 +1087,9 @@ object TPTP {
       def pretty: String
     }
     /** `f` may be a dollar word, a dollar dollar word (plain string starting with $ or $$),
-     * a lower word (plain string with certain restrictions) or a single quoted TPTP atomic word. In the latter case,
+     * a lower word (plain string with certain restrictions), a capital word or a single quoted TPTP atomic word. In the latter case,
      * non-lower word atomic words are enclosed in single quotes, e.g. '...'.
-     * Any string that is neither a dollar/dollardollar word, a lower word, or a single quoted, is an invalid
+     * Any string that is neither a dollar/dollardollar word, a lower word, a capital word or a single quoted, is an invalid
      * value for `f`. Use {{{TPTP.isLowerWord}}} to check if the string a valid (non-quoted) value for `f`, or
      * transform via {{{TPTP.convertStringToAtomicWord}}} if necessary before.
      *
@@ -1106,7 +1106,9 @@ object TPTP {
       @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
       @inline def isSystemFunction: Boolean = f.startsWith("$$")
       @inline def isConstant: Boolean = args.isEmpty
+      @inline def isSchematic: Boolean = f(0).isUpper && f(0) <= 'Z'
     }
+
     final case class QuantifiedFormula(quantifier: Quantifier, variableList: Seq[String], body: Formula) extends Formula {
       override def pretty: String = s"(${quantifier.pretty} [${variableList.mkString(",")}]: (${body.pretty}))"
       override def symbols: Set[String] = body.symbols
@@ -1154,6 +1156,7 @@ object TPTP {
       @inline def isDefinedFunction: Boolean = f.startsWith("$") && !isSystemFunction
       @inline def isSystemFunction: Boolean = f.startsWith("$$")
       @inline def isConstant: Boolean = args.isEmpty
+      @inline def isSchematic: Boolean = f(0).isUpper && f(0) <= 'Z'
     }
     /** A TPTP variable. Precondition for creating a Variable object: `name` is uppercase. */
     final case class Variable(name: String) extends Term {

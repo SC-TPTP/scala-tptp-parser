@@ -19,6 +19,7 @@ class ParserTestSuite extends AnyFunSuite {
   import ParserTestSuite.time
 
   private val source = getClass.getResource("/SYN000").getPath
+  private val sctptp_source = getClass.getResource("/sctptp").getPath
 
   private val problems = Seq(
     "SYN000-1.p" -> "TPTP CNF basic syntax features",
@@ -38,6 +39,17 @@ class ParserTestSuite extends AnyFunSuite {
     "SYN000~1.p" -> "Modal THF format with logic specification"
   )
 
+  // SC-TPTP specific tests
+  private val sctptp_problems = Seq(
+    "lisa.maths.Tests.buveurs_sol.p" -> "Drinker Solution (Goéland)",
+    "lisa.maths.Tests.buveurs.p" -> "Drinker Problem (Lisa)",
+    "lisa.maths.Tests.saturation_sol.p" -> "Saturation Problem (Egg)",
+    "lisa.maths.Tests.saturation.p" -> "Saturation Problem (Lisa)",
+    "Test.gothm0.p" -> "Test problem (Goéland) 0",
+    "Test.gothm1.p" -> "Test problem (Goéland) 1",
+    "Test.gothm2.p" -> "Test problem (Goéland) 2",
+  )
+
   for (p <- problems) {
     test(p._2) {
       println("###################################")
@@ -52,6 +64,25 @@ class ParserTestSuite extends AnyFunSuite {
         for (formula <- res.formulas) {
           assertResult(formula.pretty)(TPTPParser.annotated(formula.pretty).pretty)
         }
+        println(s"Parsing-reparsing comparison successful for '${p._1}'.")
+      } catch {
+        case e: TPTPParseException =>
+          println(s"Parse error at line ${e.line}:${e.offset}: ${e.getMessage}")
+          fail()
+      }
+    }
+  }
+  println("\nNow running SC-TPTP specific tests. \n")
+  for (p <- sctptp_problems) {
+    test(p._2) {
+      println("###################################")
+      println(s"Parsing test for ${p._2} ...")
+      println("###################################")
+      print(s"Parsing ${p._1} ...")
+      try {
+        val (t, res) = time(TPTPParser.problem(io.Source.fromFile(s"$sctptp_source/${p._1}")))
+        println(s"done (${t/1000}ms).")
+        println(s"Parsed ${res.formulas.size} formulae and ${res.includes.size} include statements.")
         println(s"Parsing-reparsing comparison successful for '${p._1}'.")
       } catch {
         case e: TPTPParseException =>
