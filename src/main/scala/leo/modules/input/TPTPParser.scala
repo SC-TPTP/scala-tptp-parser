@@ -2370,7 +2370,47 @@ object TPTPParser {
     }
 
     // Currently, no other kind of statement supported
-    @inline private[this] def fofFormula(): FOF.Statement = FOF.Logical(fofLogicFormula())
+    private[this] def fofFormula(): FOF.Statement = {
+      val idx = peekUnder(LPAREN)
+      val tok = peek(idx)
+      tok._1 match {
+        case LBRACKET if /*fofx &&*/ peek(idx+1)._1 != DOT && peek(idx+1)._1 != HASH => // Tuple on formula level, so it's a sequent
+          fofSequent()
+        case _ =>
+          FOF.Logical(fofLogicFormula())
+      }
+    }
+
+    private[this] def fofSequent(): FOF.Sequent = {
+      val lp = o(LPAREN, null)
+      if (lp != null) {
+        val res = fofSequent()
+        a(RPAREN)
+        res
+      } else {
+        val lhs = fofTuple()
+        a(SEQUENTARROW)
+        val rhs = fofTuple()
+        FOF.Sequent(lhs, rhs)
+      }
+    }
+
+
+    def fofTuple(): Seq[FOF.Formula] = {
+      a(LBRACES)
+      val rb = o(RBRACES, null)
+      if (rb != null) Seq.empty
+      else {
+        val f = fofLogicFormula()
+        var fs: Seq[FOF.Formula] = Vector(f)
+        while (o(COMMA, null) != null) {
+          val f = fofLogicFormula()
+          fs = fs :+ f
+        }
+        a(RBRACES)
+        fs
+      }
+    }
 
     def fofLogicFormula(): FOF.Formula = {
       val f1 = fofUnitFormula()

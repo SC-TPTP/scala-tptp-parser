@@ -1075,6 +1075,10 @@ object TPTP {
       override def pretty: String = formula.pretty
       override def symbols: Set[String] = formula.symbols
     }
+    final case class Sequent(lhs: Seq[Formula], rhs: Seq[Formula]) extends Statement {
+      override def pretty: String = s"${lhs.map(_.pretty).mkString("{", ",", "}")} --> ${rhs.map(_.pretty).mkString("[", ",", "]")}"
+      override def symbols: Set[String] = lhs.flatMap(_.symbols).toSet union rhs.flatMap(_.symbols).toSet
+    }
 
     sealed abstract class Formula {
       /** Returns a set of symbols (except variables) occurring in the formula. */
