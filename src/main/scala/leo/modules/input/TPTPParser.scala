@@ -2570,7 +2570,7 @@ object TPTPParser {
             }
             a(RPAREN)
           }
-          if (args.size == 0) FOF.Variable(fn) else FOF.AtomicTerm(fn, args)
+          if (args.size == 0 && fn(0).isUpper) FOF.Variable(fn) else FOF.AtomicTerm(fn, args)
         case SINGLEQUOTED => // same as before, only add single quotes if necessary
           val fn = consume()._2
           var args: Seq[FOF.Term] = Vector()
