@@ -2556,6 +2556,24 @@ object TPTPParser {
     def fofTerm(): FOF.Term = {
       val tok = peek()
       tok._1 match {
+        case LPAREN =>
+          consume()
+          val f = fofTerm()
+          a(RPAREN)
+          f
+        case q if q == HASH =>
+          val quantifier = tokenToFOFQuantifier(consume())
+          a(LBRACKET)
+          val name = variable()
+          var names: Seq[String] = Vector(name)
+          while (o(COMMA, null) != null) {
+            names = names :+ variable()
+          }
+          a(RBRACKET)
+          a(COLON)
+          val body = fofUnitFormula()
+          FOF.QuantifiedTerm(quantifier, names, body)
+
         case INT | RATIONAL | REAL =>
           FOF.NumberTerm(number())
         case DOUBLEQUOTED =>

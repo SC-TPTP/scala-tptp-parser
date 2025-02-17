@@ -1151,6 +1151,10 @@ object TPTP {
       /** Returns a TPTP-compliant serialization of the term. */
       def pretty: String
     }
+    final case class QuantifiedTerm(quantifier: Quantifier, variableList: Seq[String], body: Formula) extends Term {
+      override def pretty: String = s"(${quantifier.pretty} [${variableList.mkString(",")}]: (${body.pretty}))"
+      override def symbols: Set[String] = body.symbols
+    }
     /** `f` may be a dollar word, a dollar dollar word (plain string starting with $ or $$),
      * a lower word (plain string with certain restrictions) or a single quoted TPTP atomic word. In the latter case,
      * non-lower word atomic words are enclosed in single quotes, e.g. '...'.
